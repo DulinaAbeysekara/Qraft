@@ -1,6 +1,6 @@
 # Qraft
 
-Qraft is a simple, browser-based tool for creating custom QR codes. It was built to handle more than just plain links—supporting Wi-Fi credentials and contact cards—while giving you enough control over the design to make them look good.
+Qraft is a simple, browser-based tool for creating custom QR codes. It was built to handle more than just plain links supporting Wi-Fi credentials and contact cards while giving you enough control over the design to make them look good.
 
 ## Features
 - **Multiple Types**: Generate codes for URLs, plain text, Wi-Fi networks (SSID/Password), and vCards.
@@ -25,7 +25,7 @@ Since Qraft is just a front-end project, there's no complex setup or backend req
    ```
 2. Open `index.html` in any modern web browser.
 
-That's it. No `npm install`, no servers—just open and use.
+That's it. No `npm install`, no servers just open and use.
 
 ## Libraries used
 - [qr-code-styling](https://github.com/kozakdenys/qr-code-styling) - For the core QR generation and logo support.
