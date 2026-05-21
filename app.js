@@ -316,6 +316,14 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Get the raw canvas from the engine
         const sourceCanvas = host.querySelector('canvas');
+        console.log('JPEG Export Debug:', {
+            canvas: sourceCanvas,
+            width: sourceCanvas?.width,
+            height: sourceCanvas?.height,
+            style: sourceCanvas?.getAttribute('style'),
+            isVisible: !!(sourceCanvas?.offsetWidth || sourceCanvas?.offsetHeight || sourceCanvas?.getClientRects().length)
+        });
+
         if (!sourceCanvas) return;
 
         const res = parseInt(document.getElementById('qr-size').value);
@@ -326,6 +334,38 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const offset = thick + gap + thick;
         const full = res + (offset * 2);
+
+        // Instead of using the scaled-down preview canvas, we need the full-size QR code.
+        // We'll temporarily update the engine to the target resolution (without scaling)
+        // and background color to ensure dots are visible on white.
+        
+        // Save current state
+        const originalWidth = qrEngine._options.width;
+        const originalHeight = qrEngine._options.height;
+        const originalBackground = qrEngine._options.backgroundOptions.color;
+
+        // Update to full size for export
+        qrEngine.update({
+            width: res,
+            height: res,
+            backgroundOptions: { color: back } // Ensure background is NOT transparent for drawImage safety
+        });
+
+        // Wait a tiny bit for the engine to re-render the internal canvas
+        await new Promise(r => setTimeout(r, 100));
+        const fullCanvas = await qrEngine.getRawData('png').then(blob => {
+            return new Promise(resolve => {
+                const img = new Image();
+                img.onload = () => {
+                    const c = document.createElement('canvas');
+                    c.width = res;
+                    c.height = res;
+                    c.getContext('2d').drawImage(img, 0, 0);
+                    resolve(c);
+                };
+                img.src = URL.createObjectURL(blob);
+            });
+        });
 
         // Create composite for JPEG
         const canvas = document.createElement('canvas');
@@ -345,13 +385,24 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.fillStyle = fore;
         ctx.fillRect(thick + gap, thick + gap, full - ((thick + gap) * 2), full - ((thick + gap) * 2));
 
+        // Draw the QR area background first (as per instructions: draw white rect then QR)
+        ctx.fillStyle = back;
+        ctx.fillRect(offset, offset, res, res);
+
         // Draw the QR dots
-        ctx.drawImage(sourceCanvas, offset, offset, res, res);
+        ctx.drawImage(fullCanvas, offset, offset, res, res);
 
         const link = document.createElement('a');
         link.download = `qraft-${Date.now()}.jpg`;
         link.href = canvas.toDataURL('image/jpeg', 1.0);
         link.click();
+
+        // Restore engine state for preview
+        qrEngine.update({
+            width: originalWidth,
+            height: originalHeight,
+            backgroundOptions: { color: originalBackground }
+        });
     }
 
     document.querySelectorAll('.dropdown-menu button').forEach(btn => {
