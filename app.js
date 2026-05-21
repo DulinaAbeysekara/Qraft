@@ -311,6 +311,49 @@ document.addEventListener('DOMContentLoaded', () => {
         URL.revokeObjectURL(url);
     }
 
+    async function downloadJPEG() {
+        if (!qrEngine) return;
+        
+        // Get the raw canvas from the engine
+        const sourceCanvas = host.querySelector('canvas');
+        if (!sourceCanvas) return;
+
+        const res = parseInt(document.getElementById('qr-size').value);
+        const fore = document.getElementById('qr-dark').value;
+        const back = document.getElementById('qr-light').value;
+        const thick = parseInt(document.getElementById('border-w').value);
+        const gap = parseInt(document.getElementById('outline-w').value);
+        
+        const offset = thick + gap + thick;
+        const full = res + (offset * 2);
+
+        // Create composite for JPEG
+        const canvas = document.createElement('canvas');
+        canvas.width = full;
+        canvas.height = full;
+        const ctx = canvas.getContext('2d');
+
+        // JPEG needs a solid background (White as requested)
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw the double border layers (matching PNG/SVG logic)
+        ctx.fillStyle = fore;
+        ctx.fillRect(0, 0, full, full);
+        ctx.fillStyle = back;
+        ctx.fillRect(thick, thick, full - (thick * 2), full - (thick * 2));
+        ctx.fillStyle = fore;
+        ctx.fillRect(thick + gap, thick + gap, full - ((thick + gap) * 2), full - ((thick + gap) * 2));
+
+        // Draw the QR dots
+        ctx.drawImage(sourceCanvas, offset, offset, res, res);
+
+        const link = document.createElement('a');
+        link.download = `qraft-${Date.now()}.jpg`;
+        link.href = canvas.toDataURL('image/jpeg', 1.0);
+        link.click();
+    }
+
     document.querySelectorAll('.dropdown-menu button').forEach(btn => {
         btn.addEventListener('click', async () => {
             if (!qrEngine) return;
@@ -318,6 +361,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (format === 'svg') {
                 await downloadSVG();
+            } else if (format === 'jpeg') {
+                await downloadJPEG();
             } else {
                 qrEngine.download({ 
                     name: `qraft-${Date.now()}`, 
