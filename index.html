@@ -159,7 +159,14 @@
 
                 <div class="footer-actions">
                     <button id="btn-copy" class="btn secondary">Copy</button>
-                    <button id="btn-save" class="btn primary">Download PNG</button>
+                    <div class="export-dropdown">
+                        <button id="btn-export-toggle" class="btn primary">Export</button>
+                        <div id="export-menu" class="dropdown-menu">
+                            <button data-format="png">PNG</button>
+                            <button data-format="svg">SVG</button>
+                            <button data-format="jpeg">JPEG</button>
+                        </div>
+                    </div>
                 </div>
                 
                 <p id="msg" class="msg">Waiting for input...</p>

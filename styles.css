@@ -223,6 +223,53 @@ input[type="range"]::-webkit-slider-thumb {
     margin-top: 32px;
 }
 
+.export-dropdown {
+    position: relative;
+    display: flex;
+}
+
+.export-dropdown .btn {
+    width: 100%;
+}
+
+.dropdown-menu {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    right: 0;
+    width: 100%;
+    background: var(--input-bg);
+    border: 1px solid var(--line);
+    border-radius: var(--round-md);
+    padding: 6px;
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    z-index: 100;
+}
+
+.dropdown-menu.show {
+    display: flex;
+}
+
+.dropdown-menu button {
+    background: none;
+    border: none;
+    color: var(--text-mid);
+    padding: 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: 0.2s;
+}
+
+.dropdown-menu button:hover {
+    background: var(--line);
+    color: #fff;
+}
+
 .btn {
     padding: 14px;
     border-radius: var(--round-md);

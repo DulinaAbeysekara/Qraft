@@ -20,6 +20,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoSizeLabel = document.getElementById('logo-size-val');
     const logoAlphaLabel = document.getElementById('logo-alpha-val');
 
+    // Export UI
+    const exportToggle = document.getElementById('btn-export-toggle');
+    const exportMenu = document.getElementById('export-menu');
+
     function notify(text) {
         msg.textContent = text;
     }
@@ -218,11 +222,28 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Using qr-code-styling's built-in download
-    document.getElementById('btn-save').addEventListener('click', () => {
-        if (!qrEngine) return;
-        qrEngine.download({ name: `qraft-${Date.now()}`, extension: 'png' });
-        notify("Saved PNG");
+    // Export Dropdown Logic
+    exportToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        exportMenu.classList.toggle('show');
+    });
+
+    document.querySelectorAll('.dropdown-menu button').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (!qrEngine) return;
+            const format = btn.dataset.format;
+            qrEngine.download({ 
+                name: `qraft-${Date.now()}`, 
+                extension: format 
+            });
+            notify(`Saved ${format.toUpperCase()}`);
+            exportMenu.classList.remove('show');
+        });
+    });
+
+    // Close dropdown on click outside
+    window.addEventListener('click', () => {
+        exportMenu.classList.remove('show');
     });
 
     document.getElementById('btn-copy').addEventListener('click', async () => {
