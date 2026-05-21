@@ -3,7 +3,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let qrEngine = null;
     let localHistory = [];
     let refreshTimer;
-    let logoDataUrl = null;
+    let rawLogoData = null; // Original uploaded image
+    let processedLogo = null; // Image with alpha applied
 
     // UI Hooks
     const host = document.getElementById('canvas-host');
@@ -12,6 +13,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const borderInfo = document.getElementById('border-label');
     const logoInput = document.getElementById('qr-logo-file');
     const clearLogoBtn = document.getElementById('btn-clear-logo');
+    
+    // Logo sliders
+    const logoSizeInput = document.getElementById('logo-size');
+    const logoAlphaInput = document.getElementById('logo-alpha');
+    const logoSizeLabel = document.getElementById('logo-size-val');
+    const logoAlphaLabel = document.getElementById('logo-alpha-val');
 
     function notify(text) {
         msg.textContent = text;
@@ -52,14 +59,36 @@ document.addEventListener('DOMContentLoaded', () => {
         return "";
     }
 
+    // Apply alpha to image via offscreen canvas
+    async function applyAlpha(dataUrl, alpha) {
+        if (!dataUrl) return null;
+        if (alpha >= 1) return dataUrl;
+        
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.globalAlpha = alpha;
+                ctx.drawImage(img, 0, 0);
+                resolve(canvas.toDataURL());
+            };
+            img.src = dataUrl;
+        });
+    }
+
     // Handle Logo File Upload
     logoInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = (event) => {
-            logoDataUrl = event.target.result;
+        reader.onload = async (event) => {
+            rawLogoData = event.target.result;
+            processedLogo = await applyAlpha(rawLogoData, parseFloat(logoAlphaInput.value));
             requestRender();
         };
         reader.readAsDataURL(file);
@@ -67,7 +96,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     clearLogoBtn.addEventListener('click', () => {
         logoInput.value = "";
-        logoDataUrl = null;
+        rawLogoData = null;
+        processedLogo = null;
         requestRender();
     });
 
@@ -87,6 +117,13 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const thick = parseInt(document.getElementById('border-w').value);
         const gap = parseInt(document.getElementById('outline-w').value);
+        
+        // Logo settings
+        const logoSize = parseInt(logoSizeInput.value) / 100;
+        const logoAlpha = parseFloat(logoAlphaInput.value);
+
+        // Update processed logo if alpha changed
+        processedLogo = await applyAlpha(rawLogoData, logoAlpha);
 
         host.innerHTML = '';
         
@@ -95,10 +132,14 @@ document.addEventListener('DOMContentLoaded', () => {
             height: res,
             type: "canvas",
             data: data,
-            image: logoDataUrl || null,
+            image: processedLogo || null,
             dotsOptions: { color: fore, type: "square" },
             backgroundOptions: { color: "transparent" },
-            imageOptions: { crossOrigin: "anonymous", margin: 6 },
+            imageOptions: { 
+                crossOrigin: "anonymous", 
+                margin: 6,
+                imageSize: logoSize // Pass the size factor
+            },
             qrOptions: { errorCorrectionLevel: level }
         });
 
@@ -137,6 +178,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('input, textarea, select').forEach(el => {
         if (el.id === 'qr-logo-file') return; // Handled separately
         el.addEventListener('input', (e) => {
+            // Update labels for the new sliders
+            if (e.target.id === 'logo-size') logoSizeLabel.textContent = `${e.target.value}%`;
+            if (e.target.id === 'logo-alpha') logoAlphaLabel.textContent = e.target.value;
+            
             if (e.target.id === 'border-w') document.getElementById('bw-val').textContent = `${e.target.value}px`;
             if (e.target.id === 'outline-w') document.getElementById('ow-val').textContent = `${e.target.value}px`;
             requestRender();
