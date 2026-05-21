@@ -3,12 +3,15 @@ document.addEventListener('DOMContentLoaded', () => {
     let qrEngine = null;
     let localHistory = [];
     let refreshTimer;
+    let logoDataUrl = null;
 
     // UI Hooks
     const host = document.getElementById('canvas-host');
     const msg = document.getElementById('msg');
     const chars = document.getElementById('char-counter');
     const borderInfo = document.getElementById('border-label');
+    const logoInput = document.getElementById('qr-logo-file');
+    const clearLogoBtn = document.getElementById('btn-clear-logo');
 
     function notify(text) {
         msg.textContent = text;
@@ -49,22 +52,24 @@ document.addEventListener('DOMContentLoaded', () => {
         return "";
     }
 
-    // Helper to bypass CORS for logos
-    async function getLogoDataUrl(url) {
-        if (!url) return null;
-        try {
-            const response = await fetch(url);
-            const blob = await response.blob();
-            return new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result);
-                reader.readAsDataURL(blob);
-            });
-        } catch (e) {
-            console.warn("Logo fetch failed, using direct URL", e);
-            return url;
-        }
-    }
+    // Handle Logo File Upload
+    logoInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            logoDataUrl = event.target.result;
+            requestRender();
+        };
+        reader.readAsDataURL(file);
+    });
+
+    clearLogoBtn.addEventListener('click', () => {
+        logoInput.value = "";
+        logoDataUrl = null;
+        requestRender();
+    });
 
     async function render() {
         const data = getPayload();
@@ -79,10 +84,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const fore = document.getElementById('qr-dark').value;
         const back = document.getElementById('qr-light').value;
         const level = document.getElementById('qr-ec').value;
-        const iconUrl = document.getElementById('qr-logo').value.trim();
-        
-        // Fetch logo as base64 to avoid CORS blanking
-        const icon = await getLogoDataUrl(iconUrl);
         
         const thick = parseInt(document.getElementById('border-w').value);
         const gap = parseInt(document.getElementById('outline-w').value);
@@ -94,7 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
             height: res,
             type: "canvas",
             data: data,
-            image: icon || null,
+            image: logoDataUrl || null,
             dotsOptions: { color: fore, type: "square" },
             backgroundOptions: { color: "transparent" },
             imageOptions: { crossOrigin: "anonymous", margin: 6 },
@@ -134,6 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Bind all inputs
     document.querySelectorAll('input, textarea, select').forEach(el => {
+        if (el.id === 'qr-logo-file') return; // Handled separately
         el.addEventListener('input', (e) => {
             if (e.target.id === 'border-w') document.getElementById('bw-val').textContent = `${e.target.value}px`;
             if (e.target.id === 'outline-w') document.getElementById('ow-val').textContent = `${e.target.value}px`;
