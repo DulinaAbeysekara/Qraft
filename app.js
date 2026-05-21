@@ -49,7 +49,24 @@ document.addEventListener('DOMContentLoaded', () => {
         return "";
     }
 
-    function render() {
+    // Helper to bypass CORS for logos
+    async function getLogoDataUrl(url) {
+        if (!url) return null;
+        try {
+            const response = await fetch(url);
+            const blob = await response.blob();
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.readAsDataURL(blob);
+            });
+        } catch (e) {
+            console.warn("Logo fetch failed, using direct URL", e);
+            return url;
+        }
+    }
+
+    async function render() {
         const data = getPayload();
         if (!data) {
             notify("Awaiting input...");
@@ -62,7 +79,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const fore = document.getElementById('qr-dark').value;
         const back = document.getElementById('qr-light').value;
         const level = document.getElementById('qr-ec').value;
-        const icon = document.getElementById('qr-logo').value.trim();
+        const iconUrl = document.getElementById('qr-logo').value.trim();
+        
+        // Fetch logo as base64 to avoid CORS blanking
+        const icon = await getLogoDataUrl(iconUrl);
         
         const thick = parseInt(document.getElementById('border-w').value);
         const gap = parseInt(document.getElementById('outline-w').value);
@@ -81,15 +101,21 @@ document.addEventListener('DOMContentLoaded', () => {
             qrOptions: { errorCorrectionLevel: level }
         });
 
+        // Scaled preview for better UI fit
+        const scale = 0.5;
+        const thickPre = Math.max(1, thick * scale);
+        const gapPre = Math.max(1, gap * scale);
+
         const frame = document.createElement('div');
         frame.style.cssText = `
             display: inline-block;
             background: ${back};
-            padding: ${gap}px;
-            border: ${thick}px solid ${fore};
-            outline: ${thick}px solid ${fore};
-            outline-offset: ${gap}px;
-            margin: ${thick + gap}px;
+            padding: ${gapPre}px;
+            border: ${thickPre}px solid ${fore};
+            outline: ${thickPre}px solid ${fore};
+            outline-offset: ${gapPre}px;
+            margin: ${thickPre + gapPre}px;
+            max-width: 100%;
         `;
 
         host.appendChild(frame);
@@ -103,7 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function requestRender() {
         clearTimeout(refreshTimer);
-        refreshTimer = setTimeout(render, 100);
+        refreshTimer = setTimeout(render, 150);
     }
 
     // Bind all inputs
@@ -145,56 +171,53 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    async function buildComposite() {
-        const res = parseInt(document.getElementById('qr-size').value);
-        const fore = document.getElementById('qr-dark').value;
-        const back = document.getElementById('qr-light').value;
-        const thick = parseInt(document.getElementById('border-w').value);
-        const gap = parseInt(document.getElementById('outline-w').value);
-        
-        const offset = thick + gap + thick;
-        const full = res + (offset * 2);
-
-        const canvas = document.createElement('canvas');
-        canvas.width = full;
-        canvas.height = full;
-        const ctx = canvas.getContext('2d');
-
-        // Layers
-        ctx.fillStyle = fore;
-        ctx.fillRect(0, 0, full, full);
-
-        ctx.fillStyle = back;
-        ctx.fillRect(thick, thick, full - (thick * 2), full - (thick * 2));
-
-        ctx.fillStyle = fore;
-        ctx.fillRect(thick + gap, thick + gap, full - ((thick + gap) * 2), full - ((thick + gap) * 2));
-
-        const qrCanvas = await qrEngine.getRawData('canvas');
-        ctx.drawImage(qrCanvas, offset, offset, res, res);
-
-        return canvas;
-    }
-
-    document.getElementById('btn-save').addEventListener('click', async () => {
-        const c = await buildComposite();
-        const link = document.createElement('a');
-        link.download = `qraft-${Date.now()}.png`;
-        link.href = c.toDataURL();
-        link.click();
+    // Using qr-code-styling's built-in download
+    document.getElementById('btn-save').addEventListener('click', () => {
+        if (!qrEngine) return;
+        qrEngine.download({ name: `qraft-${Date.now()}`, extension: 'png' });
         notify("Saved PNG");
     });
 
     document.getElementById('btn-copy').addEventListener('click', async () => {
-        const c = await buildComposite();
-        c.toBlob(blob => {
-            try {
-                navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        if (!qrEngine) return;
+        try {
+            // Get the raw canvas from the engine
+            const sourceCanvas = host.querySelector('canvas');
+            if (!sourceCanvas) throw new Error("Canvas not ready");
+
+            const res = parseInt(document.getElementById('qr-size').value);
+            const fore = document.getElementById('qr-dark').value;
+            const back = document.getElementById('qr-light').value;
+            const thick = parseInt(document.getElementById('border-w').value);
+            const gap = parseInt(document.getElementById('outline-w').value);
+            
+            const offset = thick + gap + thick;
+            const full = res + (offset * 2);
+
+            // Re-create composite for clipboard
+            const canvas = document.createElement('canvas');
+            canvas.width = full;
+            canvas.height = full;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = fore;
+            ctx.fillRect(0, 0, full, full);
+            ctx.fillStyle = back;
+            ctx.fillRect(thick, thick, full - (thick * 2), full - (thick * 2));
+            ctx.fillStyle = fore;
+            ctx.fillRect(thick + gap, thick + gap, full - ((thick + gap) * 2), full - ((thick + gap) * 2));
+
+            ctx.drawImage(sourceCanvas, offset, offset, res, res);
+
+            canvas.toBlob(blob => {
+                const item = new ClipboardItem({ "image/png": blob });
+                navigator.clipboard.write([item]);
                 notify("Copied to clipboard");
-            } catch (e) {
-                notify("Copy failed");
-            }
-        });
+            });
+        } catch (e) {
+            notify("Copy failed");
+            console.error(e);
+        }
     });
 
     // Start
