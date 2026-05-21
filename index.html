@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qraft | QR Generator</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo-area">
+                <h1>Qraft</h1>
+            </div>
+            <div id="stats" class="stats">
+                <span id="char-counter">0 chars</span>
+            </div>
+        </header>
+
+        <main class="grid">
+            <section class="editor">
+                <nav class="modes">
+                    <button class="mode-btn active" data-type="url">Link</button>
+                    <button class="mode-btn" data-type="text">Text</button>
+                    <button class="mode-btn" data-type="wifi">Wi-Fi</button>
+                    <button class="mode-btn" data-type="vcard">vCard</button>
+                </nav>
+
+                <div class="panels">
+                    <!-- URL -->
+                    <div id="panel-url" class="panel active">
+                        <div class="field">
+                            <label>Destination</label>
+                            <input type="url" id="inp-url" placeholder="https://..." value="https://google.com">
+                        </div>
+                    </div>
+
+                    <!-- Text -->
+                    <div id="panel-text" class="panel">
+                        <div class="field">
+                            <label>Plain text</label>
+                            <textarea id="inp-text" placeholder="Write something..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Wi-Fi -->
+                    <div id="panel-wifi" class="panel">
+                        <div class="field">
+                            <label>SSID (Network Name)</label>
+                            <input type="text" id="wifi-ssid" placeholder="Ex: Home_Wifi">
+                        </div>
+                        <div class="row">
+                            <div class="field">
+                                <label>Password</label>
+                                <input type="text" id="wifi-pass" placeholder="Password">
+                            </div>
+                            <div class="field">
+                                <label>Security</label>
+                                <select id="wifi-sec">
+                                    <option value="WPA">WPA/WPA2</option>
+                                    <option value="WEP">WEP</option>
+                                    <option value="nopass">None</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- vCard -->
+                    <div id="panel-vcard" class="panel">
+                        <div class="row">
+                            <div class="field">
+                                <label>Full name</label>
+                                <input type="text" id="vc-name" placeholder="Alex Rivera">
+                            </div>
+                            <div class="field">
+                                <label>Phone</label>
+                                <input type="text" id="vc-phone" placeholder="+1...">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="field">
+                                <label>Email</label>
+                                <input type="text" id="vc-email" placeholder="alex@example.com">
+                            </div>
+                            <div class="field">
+                                <label>Web</label>
+                                <input type="text" id="vc-url" placeholder="example.com">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config">
+                    <div class="group">
+                        <h3>Colors & Branding</h3>
+                        <div class="row">
+                            <div class="field">
+                                <label>Foreground</label>
+                                <input type="color" id="qr-dark" value="#000000">
+                            </div>
+                            <div class="field">
+                                <label>Background</label>
+                                <input type="color" id="qr-light" value="#ffffff">
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label>Logo Overlay (URL)</label>
+                            <input type="text" id="qr-logo" placeholder="Paste an image link...">
+                        </div>
+                    </div>
+
+                    <div class="group">
+                        <h3>Output Quality</h3>
+                        <div class="row">
+                            <div class="field">
+                                <label>Resolution</label>
+                                <select id="qr-size">
+                                    <option value="200">200px</option>
+                                    <option value="300" selected>300px</option>
+                                    <option value="500">500px</option>
+                                    <option value="1000">1000px</option>
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label>Error Correction</label>
+                                <select id="qr-ec">
+                                    <option value="L">Low (7%)</option>
+                                    <option value="M" selected>Medium (15%)</option>
+                                    <option value="Q">Quartile (25%)</option>
+                                    <option value="H">High (30%)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="frames">
+                    <div class="slider">
+                        <label>Frame Thickness: <span id="bw-val">10px</span></label>
+                        <input type="range" id="border-w" min="0" max="40" value="10">
+                    </div>
+                    <div class="slider">
+                        <label>Inner Padding: <span id="ow-val">6px</span></label>
+                        <input type="range" id="outline-w" min="0" max="30" value="6">
+                    </div>
+                </div>
+
+                <div class="footer-actions">
+                    <button id="btn-copy" class="btn secondary">Copy</button>
+                    <button id="btn-save" class="btn primary">Download PNG</button>
+                </div>
+                
+                <p id="msg" class="msg">Waiting for input...</p>
+            </section>
+
+            <section class="preview">
+                <div class="card">
+                    <div class="meta">
+                        <span>Preview</span>
+                        <span id="border-label">10px + 6px</span>
+                    </div>
+                    <div class="viewport">
+                        <div id="canvas-host"></div>
+                    </div>
+                </div>
+
+                <div id="history" class="history" style="display: none">
+                    <h4>Recent Links</h4>
+                    <div id="history-list" class="list"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
