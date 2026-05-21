@@ -228,14 +228,103 @@ document.addEventListener('DOMContentLoaded', () => {
         exportMenu.classList.toggle('show');
     });
 
+    async function downloadSVG() {
+        if (!qrEngine) return;
+        
+        const res = parseInt(document.getElementById('qr-size').value);
+        const fore = document.getElementById('qr-dark').value;
+        const back = document.getElementById('qr-light').value;
+        const thick = parseInt(document.getElementById('border-w').value);
+        const gap = parseInt(document.getElementById('outline-w').value);
+        
+        const offset = thick + gap + thick;
+        const full = res + (offset * 2);
+
+        // Get raw SVG from engine
+        const svgBlob = await qrEngine.getRawData('svg');
+        const svgText = await svgBlob.text();
+        
+        // Parse the SVG
+        const parser = new DOMParser();
+        const svgDoc = parser.parseFromString(svgText, "image/svg+xml");
+        const originalSvg = svgDoc.documentElement;
+        
+        // Create new SVG with full dimensions
+        const newSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        newSvg.setAttribute("width", full);
+        newSvg.setAttribute("height", full);
+        newSvg.setAttribute("viewBox", `0 0 ${full} ${full}`);
+        newSvg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+
+        // 1. Outer Frame (Fore color)
+        const outer = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        outer.setAttribute("width", full);
+        outer.setAttribute("height", full);
+        outer.setAttribute("fill", fore);
+        newSvg.appendChild(outer);
+
+        // 2. Inner Padding (Back color)
+        const middle = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        middle.setAttribute("x", thick);
+        middle.setAttribute("y", thick);
+        middle.setAttribute("width", full - (thick * 2));
+        middle.setAttribute("height", full - (thick * 2));
+        middle.setAttribute("fill", back);
+        newSvg.appendChild(middle);
+
+        // 3. Inner Frame (Fore color)
+        const inner = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        inner.setAttribute("x", thick + gap);
+        inner.setAttribute("y", thick + gap);
+        inner.setAttribute("width", full - ((thick + gap) * 2));
+        inner.setAttribute("height", full - ((thick + gap) * 2));
+        inner.setAttribute("fill", fore);
+        newSvg.appendChild(inner);
+
+        // 4. Background for QR area (Back color)
+        const qrBack = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        qrBack.setAttribute("x", offset);
+        qrBack.setAttribute("y", offset);
+        qrBack.setAttribute("width", res);
+        qrBack.setAttribute("height", res);
+        qrBack.setAttribute("fill", back);
+        newSvg.appendChild(qrBack);
+
+        // 5. Inject QR content
+        const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        g.setAttribute("transform", `translate(${offset}, ${offset})`);
+        
+        // Move children from original SVG to group
+        while (originalSvg.firstChild) {
+            g.appendChild(originalSvg.firstChild);
+        }
+        newSvg.appendChild(g);
+
+        // Trigger Download
+        const finalSvgText = new XMLSerializer().serializeToString(newSvg);
+        const blob = new Blob([finalSvgText], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `qraft-${Date.now()}.svg`;
+        link.click();
+        URL.revokeObjectURL(url);
+    }
+
     document.querySelectorAll('.dropdown-menu button').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
             if (!qrEngine) return;
             const format = btn.dataset.format;
-            qrEngine.download({ 
-                name: `qraft-${Date.now()}`, 
-                extension: format 
-            });
+            
+            if (format === 'svg') {
+                await downloadSVG();
+            } else {
+                qrEngine.download({ 
+                    name: `qraft-${Date.now()}`, 
+                    extension: format 
+                });
+            }
+            
             notify(`Saved ${format.toUpperCase()}`);
             exportMenu.classList.remove('show');
         });
